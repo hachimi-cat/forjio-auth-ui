@@ -19,6 +19,17 @@ export interface AuthFormProps {
   /** Default redirect target after a successful auth. Default
    *  `/dashboard`. Search-param `?return_to=` overrides at runtime. */
   defaultReturnTo?: string;
+  /** Mode-switch link targets. Default `/login` / `/signup`. Override
+   *  for products with non-default auth routes (e.g. role-scoped
+   *  `/creators/login` + `/creators/onboarding`). `?return_to=` is
+   *  appended automatically. */
+  loginHref?: string;
+  signupHref?: string;
+  /** "Forgot password?" link target. Default `/forgot-password`. */
+  forgotPasswordHref?: string;
+  /** Extra fields merged into the login/signup request body — e.g. a
+   *  `role` discriminator for multi-role products. */
+  extraBody?: Record<string, unknown>;
 }
 
 export function AuthForm({
@@ -27,6 +38,10 @@ export function AuthForm({
   endpoints,
   providers,
   defaultReturnTo = '/dashboard',
+  loginHref = '/login',
+  signupHref = '/signup',
+  forgotPasswordHref = '/forgot-password',
+  extraBody,
 }: AuthFormProps) {
   const router = useRouter();
   const params = useSearchParams();
@@ -50,7 +65,7 @@ export function AuthForm({
     setSubmitting(true);
     try {
       const path = mode === 'signup' ? ep.signup : ep.login;
-      const body: Record<string, unknown> = { email, password };
+      const body: Record<string, unknown> = { email, password, ...extraBody };
       if (mode === 'signup' && name.trim()) body.name = name.trim();
       const res = await fetch(path, {
         method: 'POST',
@@ -83,7 +98,7 @@ export function AuthForm({
   }
 
   const otherMode = mode === 'login' ? 'signup' : 'login';
-  const otherHref = `/${otherMode}?return_to=${encodeURIComponent(returnTo)}`;
+  const otherHref = `${otherMode === 'signup' ? signupHref : loginHref}?return_to=${encodeURIComponent(returnTo)}`;
   const socialUrl = (provider: 'google' | 'apple' | 'facebook') =>
     `${ep.socialStart}?provider=${provider}&return_to=${encodeURIComponent(returnTo)}`;
 
@@ -209,7 +224,7 @@ export function AuthForm({
 
       <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground">
         {mode === 'login' && (
-          <Link href="/forgot-password" className="hover:text-foreground">
+          <Link href={forgotPasswordHref} className="hover:text-foreground">
             Forgot password?
           </Link>
         )}
