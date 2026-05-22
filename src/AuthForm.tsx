@@ -39,6 +39,7 @@ export function AuthForm({
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(
     ssoError ? `Sign-in failed: ${ssoDetail || ssoError}` : null,
   );
@@ -58,7 +59,18 @@ export function AuthForm({
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        const payload = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        const payload = (await res.json().catch(() => null)) as {
+          error?: { code?: string; message?: string };
+        } | null;
+        // The product BFF does not do inline MFA. When a user has MFA
+        // enabled, Huudis ROPC fails and the SDK returns 401 with
+        // `code: 'MFA_REQUIRED'`. Hand off to the Huudis hosted-login
+        // flow (no `provider=` param) — Huudis performs the challenge.
+        if (payload?.error?.code === 'MFA_REQUIRED') {
+          setRedirecting(true);
+          window.location.href = `${ep.socialStart}?return_to=${encodeURIComponent(returnTo)}`;
+          return;
+        }
         throw new Error(payload?.error?.message ?? `Request failed (${res.status})`);
       }
       router.push(returnTo);
@@ -72,19 +84,27 @@ export function AuthForm({
 
   const otherMode = mode === 'login' ? 'signup' : 'login';
   const otherHref = `/${otherMode}?return_to=${encodeURIComponent(returnTo)}`;
-  const socialUrl = (provider: 'google' | 'apple') =>
+  const socialUrl = (provider: 'google' | 'apple' | 'facebook') =>
     `${ep.socialStart}?provider=${provider}&return_to=${encodeURIComponent(returnTo)}`;
 
   const showGoogle = providers?.google !== false;
   const showApple = providers?.apple !== false;
-  const hasAnySocial = showGoogle || showApple;
+  const showFacebook = providers?.facebook !== false;
+  const hasAnySocial = showGoogle || showApple || showFacebook;
 
   return (
     <div className="space-y-4">
-      {error && (
+      {error && !redirecting && (
         <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {redirecting && (
+        <div className="flex items-start gap-2 rounded-md border border-border bg-accent px-3 py-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 shrink-0 mt-0.5 animate-spin" />
+          <span>Redirecting you to complete two-factor sign-in…</span>
         </div>
       )}
 
@@ -107,6 +127,15 @@ export function AuthForm({
               >
                 <AppleMark className="h-4 w-4" />
                 Continue with Apple
+              </a>
+            )}
+            {showFacebook && (
+              <a
+                href={socialUrl('facebook')}
+                className="flex w-full items-center justify-center gap-2 rounded-md border border-border bg-background py-2 text-sm font-medium hover:bg-accent"
+              >
+                <FacebookMark className="h-4 w-4" />
+                Continue with Facebook
               </a>
             )}
           </div>
@@ -162,11 +191,13 @@ export function AuthForm({
         )}
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || redirecting}
           className="flex w-full items-center justify-center gap-2 rounded-md bg-primary py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
         >
-          {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-          {submitting
+          {(submitting || redirecting) && <Loader2 className="h-4 w-4 animate-spin" />}
+          {redirecting
+            ? 'Redirecting…'
+            : submitting
             ? mode === 'signup'
               ? 'Creating…'
               : 'Signing in…'
@@ -207,6 +238,14 @@ function GoogleMark({ className }: { className?: string }) {
       <path d="M12 22c2.7 0 4.965-.895 6.62-2.422l-3.233-2.51c-.895.6-2.041.955-3.386.955-2.604 0-4.81-1.76-5.596-4.122H3.067v2.59A9.996 9.996 0 0 0 12 22Z" fill="#34A853" />
       <path d="M6.404 13.9a6.016 6.016 0 0 1 0-3.8V7.512H3.067a9.996 9.996 0 0 0 0 8.977L6.404 13.9Z" fill="#FBBC05" />
       <path d="M12 5.977c1.468 0 2.786.505 3.823 1.497l2.868-2.868C16.96 2.986 14.696 2 12 2 8.118 2 4.76 4.232 3.067 7.51l3.337 2.59C7.19 7.737 9.396 5.977 12 5.977Z" fill="#EA4335" />
+    </svg>
+  );
+}
+
+function FacebookMark({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#1877F2" aria-hidden="true">
+      <path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073c0 6.026 4.388 11.022 10.125 11.927v-8.437H7.078v-3.49h3.047V9.41c0-3.026 1.792-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.971H15.83c-1.49 0-1.955.93-1.955 1.886v2.266h3.328l-.532 3.49h-2.796v8.437C19.612 23.095 24 18.099 24 12.073Z" />
     </svg>
   );
 }

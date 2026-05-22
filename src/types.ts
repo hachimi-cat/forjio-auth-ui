@@ -6,8 +6,9 @@ export interface AuthEndpoints {
   signup: string;
   forgotPassword: string;
   resetPassword: string;
-  /** Social-provider start path. `?provider=<google|apple>` is appended
-   *  by the form. */
+  /** Social-provider start path. `?provider=<google|apple|facebook>` is
+   *  appended by the form. Hitting it with no `provider=` lands on the
+   *  Huudis hosted login (used for the MFA hand-off). */
   socialStart: string;
 }
 
@@ -26,4 +27,5 @@ export const defaultEndpoints: AuthEndpoints = {
 export interface SocialProviders {
   google?: boolean;
   apple?: boolean;
+  facebook?: boolean;
 }

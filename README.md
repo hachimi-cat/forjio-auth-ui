@@ -67,7 +67,7 @@ export default function ResetPasswordPage() {
 | `mode`            | required                         | `'login'` or `'signup'`                              |
 | `brand`           | required                         | Brand name shown in copy (e.g. `'Kalium'`)           |
 | `endpoints`       | family defaults                  | Override paths if backend mounts differ              |
-| `providers`       | `null` (fail-open shows both)    | `{ google: bool, apple: bool }` — host fetches       |
+| `providers`       | `null` (fail-open shows all)     | `{ google?, apple?, facebook? }` bools — host fetches |
 | `defaultReturnTo` | `/dashboard`                     | Redirect after success; `?return_to=` overrides      |
 
 ### `ForgotPasswordForm` / `ResetPasswordForm`
@@ -90,6 +90,21 @@ export default function ResetPasswordPage() {
 
 These match the routes mounted by `@forjio/sdk/auth-handlers`. New
 products should mount the same paths and not override the prop.
+
+## Social login
+
+`AuthForm` renders Google, Apple, and Facebook buttons. Each is gated
+on `providers` (fail-open — `undefined`/`null` shows all three). Each
+button links to `socialStart?provider=<name>&return_to=…`.
+
+## MFA hand-off
+
+The product BFF does not do inline MFA. When a user with MFA enabled
+signs in, the `@forjio/sdk` `/login` route returns `401` with body
+`{ error: { code: 'MFA_REQUIRED', … } }`. `AuthForm` detects this and
+redirects the browser to the Huudis hosted-login flow
+(`socialStart?return_to=…`, no `provider=`), where Huudis performs the
+two-factor challenge. No TOTP form is rendered product-side.
 
 ## Why Tailwind classes (not inline styles)?
 
