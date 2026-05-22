@@ -86,9 +86,14 @@ export function AuthForm({
         // enabled, Huudis ROPC fails and the SDK returns 401 with
         // `code: 'MFA_REQUIRED'`. Hand off to the Huudis hosted-login
         // flow (no `provider=` param) — Huudis performs the challenge.
+        // `socialParams` (e.g. `{ role }`) MUST ride along so a
+        // multi-role product mints the correct per-role session on the
+        // OIDC callback — otherwise the role is lost and the user is
+        // gated on the wrong portal.
         if (payload?.error?.code === 'MFA_REQUIRED') {
           setRedirecting(true);
-          window.location.href = `${ep.socialStart}?return_to=${encodeURIComponent(returnTo)}`;
+          const qs = new URLSearchParams({ return_to: returnTo, ...socialParams });
+          window.location.href = `${ep.socialStart}?${qs.toString()}`;
           return;
         }
         throw new Error(payload?.error?.message ?? `Request failed (${res.status})`);

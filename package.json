@@ -1,6 +1,6 @@
 {
   "name": "@forjio/auth-ui",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Shared auth forms (login, signup, forgot-password, reset-password) for the Forjio family of SaaS products. Sister package to @forjio/website-ui and @forjio/portal-ui.",
   "license": "UNLICENSED",
   "private": false,
