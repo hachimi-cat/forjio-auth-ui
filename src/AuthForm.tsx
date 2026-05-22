@@ -30,6 +30,10 @@ export interface AuthFormProps {
   /** Extra fields merged into the login/signup request body — e.g. a
    *  `role` discriminator for multi-role products. */
   extraBody?: Record<string, unknown>;
+  /** Extra query params appended to the social-start URL — e.g.
+   *  `{ role }`, which the Huudis OIDC start needs to mint the correct
+   *  per-role session on callback. */
+  socialParams?: Record<string, string>;
 }
 
 export function AuthForm({
@@ -42,6 +46,7 @@ export function AuthForm({
   signupHref = '/signup',
   forgotPasswordHref = '/forgot-password',
   extraBody,
+  socialParams,
 }: AuthFormProps) {
   const router = useRouter();
   const params = useSearchParams();
@@ -99,8 +104,10 @@ export function AuthForm({
 
   const otherMode = mode === 'login' ? 'signup' : 'login';
   const otherHref = `${otherMode === 'signup' ? signupHref : loginHref}?return_to=${encodeURIComponent(returnTo)}`;
-  const socialUrl = (provider: 'google' | 'apple' | 'facebook') =>
-    `${ep.socialStart}?provider=${provider}&return_to=${encodeURIComponent(returnTo)}`;
+  const socialUrl = (provider: 'google' | 'apple' | 'facebook') => {
+    const qs = new URLSearchParams({ provider, return_to: returnTo, ...socialParams });
+    return `${ep.socialStart}?${qs.toString()}`;
+  };
 
   const showGoogle = providers?.google !== false;
   const showApple = providers?.apple !== false;
