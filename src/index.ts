@@ -6,3 +6,4 @@ export { ResetPasswordForm } from './ResetPasswordForm';
 export type { ResetPasswordFormProps } from './ResetPasswordForm';
 export type { AuthEndpoints, SocialProviders } from './types';
 export { defaultEndpoints } from './types';
+export { fetchSocialProviders } from './providers';
