@@ -3,7 +3,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { defaultEndpoints, type AuthEndpoints } from './types';
+
+// Enabled family-wide via NEXT_PUBLIC_TURNSTILE_SITE_KEY (see AuthForm).
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 export interface ForgotPasswordFormProps {
   endpoints?: Partial<AuthEndpoints>;
@@ -14,6 +18,7 @@ export function ForgotPasswordForm({ endpoints }: ForgotPasswordFormProps = {}) 
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
@@ -24,7 +29,10 @@ export function ForgotPasswordForm({ endpoints }: ForgotPasswordFormProps = {}) 
       const res = await fetch(ep.forgotPassword, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({
+          email,
+          ...(TURNSTILE_SITE_KEY ? { 'cf-turnstile-response': turnstileToken } : {}),
+        }),
       });
       if (!res.ok) {
         const payload = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
@@ -74,6 +82,16 @@ export function ForgotPasswordForm({ endpoints }: ForgotPasswordFormProps = {}) 
           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
         />
       </div>
+      {TURNSTILE_SITE_KEY && (
+        <div className="flex justify-center py-1">
+          <Turnstile
+            siteKey={TURNSTILE_SITE_KEY}
+            onSuccess={setTurnstileToken}
+            onError={() => setError('Security check failed.')}
+            options={{ theme: 'auto' }}
+          />
+        </div>
+      )}
       <button
         type="submit"
         disabled={submitting}

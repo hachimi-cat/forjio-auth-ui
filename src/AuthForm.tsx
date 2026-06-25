@@ -4,7 +4,17 @@ import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { defaultEndpoints, type AuthEndpoints, type SocialProviders } from './types';
+
+// Cloudflare Turnstile is enabled family-wide by setting
+// NEXT_PUBLIC_TURNSTILE_SITE_KEY at build time. Next inlines NEXT_PUBLIC_*
+// referenced here (in node_modules) into each product's bundle, so no
+// per-product page edit is needed — set the env var + the widget appears,
+// and the token rides the login/signup request as `cf-turnstile-response`.
+// The backend (@forjio/sdk/auth-server) verifies it when
+// TURNSTILE_SECRET_KEY is set; both sides bypass gracefully when unset.
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 export interface AuthFormProps {
   mode: 'login' | 'signup';
@@ -60,6 +70,7 @@ export function AuthForm({
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
   const [error, setError] = useState<string | null>(
     ssoError ? `Sign-in failed: ${ssoDetail || ssoError}` : null,
   );
@@ -72,6 +83,7 @@ export function AuthForm({
       const path = mode === 'signup' ? ep.signup : ep.login;
       const body: Record<string, unknown> = { email, password, ...extraBody };
       if (mode === 'signup' && name.trim()) body.name = name.trim();
+      if (TURNSTILE_SITE_KEY) body['cf-turnstile-response'] = turnstileToken;
       const res = await fetch(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -213,6 +225,16 @@ export function AuthForm({
               onChange={(e) => setName(e.target.value)}
               autoComplete="name"
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+        )}
+        {TURNSTILE_SITE_KEY && (
+          <div className="flex justify-center py-1">
+            <Turnstile
+              siteKey={TURNSTILE_SITE_KEY}
+              onSuccess={setTurnstileToken}
+              onError={() => setError('Security check failed.')}
+              options={{ theme: 'auto' }}
             />
           </div>
         )}
