@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
+import { useTurnstileTheme } from './useTurnstileTheme';
 import { defaultEndpoints, type AuthEndpoints } from './types';
 
 // Enabled family-wide via NEXT_PUBLIC_TURNSTILE_SITE_KEY (see AuthForm).
@@ -88,7 +89,7 @@ export function ForgotPasswordForm({ endpoints }: ForgotPasswordFormProps = {}) 
             siteKey={TURNSTILE_SITE_KEY}
             onSuccess={setTurnstileToken}
             onError={() => setError('Security check failed.')}
-            options={{ theme: 'auto' }}
+            options={{ theme: turnstileTheme }}
           />
         </div>
       )}

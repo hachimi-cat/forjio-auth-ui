@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
+import { useTurnstileTheme } from './useTurnstileTheme';
 import { defaultEndpoints, type AuthEndpoints, type SocialProviders } from './types';
 
 // Cloudflare Turnstile is enabled family-wide by setting
@@ -71,6 +72,7 @@ export function AuthForm({
   const [submitting, setSubmitting] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileTheme = useTurnstileTheme();
   const [error, setError] = useState<string | null>(
     ssoError ? `Sign-in failed: ${ssoDetail || ssoError}` : null,
   );
@@ -234,7 +236,7 @@ export function AuthForm({
               siteKey={TURNSTILE_SITE_KEY}
               onSuccess={setTurnstileToken}
               onError={() => setError('Security check failed.')}
-              options={{ theme: 'auto' }}
+              options={{ theme: turnstileTheme }}
             />
           </div>
         )}
