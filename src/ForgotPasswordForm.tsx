@@ -20,6 +20,7 @@ export function ForgotPasswordForm({ endpoints }: ForgotPasswordFormProps = {}) 
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileTheme = useTurnstileTheme();
   const [error, setError] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
