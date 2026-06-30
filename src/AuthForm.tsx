@@ -6,6 +6,9 @@ import Link from 'next/link';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { useTurnstileTheme } from './useTurnstileTheme';
+import { Button } from './components/ui/button';
+import { Input } from './components/ui/input';
+import { Label } from './components/ui/label';
 import { defaultEndpoints, type AuthEndpoints, type SocialProviders } from './types';
 
 // Cloudflare Turnstile is enabled family-wide by setting
@@ -153,31 +156,40 @@ export function AuthForm({
         <>
           <div className="grid gap-2">
             {showGoogle && (
-              <a
-                href={socialUrl('google')}
-                className="flex w-full items-center justify-center gap-2 rounded-md border border-border bg-background py-2 text-sm font-medium hover:bg-accent"
+              <Button
+                asChild
+                variant="outline"
+                className="flex h-auto w-full border-border py-2 shadow-none"
               >
-                <GoogleMark className="h-4 w-4" />
-                Continue with Google
-              </a>
+                <a href={socialUrl('google')}>
+                  <GoogleMark className="h-4 w-4" />
+                  Continue with Google
+                </a>
+              </Button>
             )}
             {showApple && (
-              <a
-                href={socialUrl('apple')}
-                className="flex w-full items-center justify-center gap-2 rounded-md border border-border bg-background py-2 text-sm font-medium hover:bg-accent"
+              <Button
+                asChild
+                variant="outline"
+                className="flex h-auto w-full border-border py-2 shadow-none"
               >
-                <AppleMark className="h-4 w-4" />
-                Continue with Apple
-              </a>
+                <a href={socialUrl('apple')}>
+                  <AppleMark className="h-4 w-4" />
+                  Continue with Apple
+                </a>
+              </Button>
             )}
             {showFacebook && (
-              <a
-                href={socialUrl('facebook')}
-                className="flex w-full items-center justify-center gap-2 rounded-md border border-border bg-background py-2 text-sm font-medium hover:bg-accent"
+              <Button
+                asChild
+                variant="outline"
+                className="flex h-auto w-full border-border py-2 shadow-none"
               >
-                <FacebookMark className="h-4 w-4" />
-                Continue with Facebook
-              </a>
+                <a href={socialUrl('facebook')}>
+                  <FacebookMark className="h-4 w-4" />
+                  Continue with Facebook
+                </a>
+              </Button>
             )}
           </div>
 
@@ -191,26 +203,26 @@ export function AuthForm({
 
       <form onSubmit={submit} className="space-y-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Email</label>
-          <input
+          <Label className="mb-1 block text-xs leading-4 text-muted-foreground">Email</Label>
+          <Input
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className="h-auto border-border bg-background py-2 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Password</label>
-          <input
+          <Label className="mb-1 block text-xs leading-4 text-muted-foreground">Password</Label>
+          <Input
             type="password"
             required
             minLength={mode === 'signup' ? 10 : undefined}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className="h-auto border-border bg-background py-2 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-primary"
           />
           {mode === 'signup' && (
             <p className="mt-1 text-[11px] text-muted-foreground">At least 10 characters, with a letter and a number.</p>
@@ -218,15 +230,15 @@ export function AuthForm({
         </div>
         {mode === 'signup' && (
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+            <Label className="mb-1 block text-xs leading-4 text-muted-foreground">
               Your name <span className="text-muted-foreground/60">(optional)</span>
-            </label>
-            <input
+            </Label>
+            <Input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoComplete="name"
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              className="h-auto border-border bg-background py-2 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
         )}
@@ -240,10 +252,10 @@ export function AuthForm({
             />
           </div>
         )}
-        <button
+        <Button
           type="submit"
           disabled={submitting || redirecting}
-          className="flex w-full items-center justify-center gap-2 rounded-md bg-primary py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+          className="flex h-auto w-full py-2.5 shadow-none hover:opacity-90"
         >
           {(submitting || redirecting) && <Loader2 className="h-4 w-4 animate-spin" />}
           {redirecting
@@ -255,7 +267,7 @@ export function AuthForm({
             : mode === 'signup'
             ? 'Create account'
             : 'Sign in'}
-        </button>
+        </Button>
       </form>
 
       <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground">

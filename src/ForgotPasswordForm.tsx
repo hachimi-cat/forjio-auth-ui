@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { useTurnstileTheme } from './useTurnstileTheme';
+import { Button } from './components/ui/button';
+import { Input } from './components/ui/input';
+import { Label } from './components/ui/label';
 import { defaultEndpoints, type AuthEndpoints } from './types';
 
 // Enabled family-wide via NEXT_PUBLIC_TURNSTILE_SITE_KEY (see AuthForm).
@@ -73,15 +76,15 @@ export function ForgotPasswordForm({ endpoints }: ForgotPasswordFormProps = {}) 
         </div>
       )}
       <div>
-        <label className="mb-1 block text-xs font-medium text-muted-foreground">Email</label>
-        <input
+        <Label className="mb-1 block text-xs leading-4 text-muted-foreground">Email</Label>
+        <Input
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
           autoFocus
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+          className="h-auto border-border bg-background py-2 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-primary"
         />
       </div>
       {TURNSTILE_SITE_KEY && (
@@ -94,14 +97,14 @@ export function ForgotPasswordForm({ endpoints }: ForgotPasswordFormProps = {}) 
           />
         </div>
       )}
-      <button
+      <Button
         type="submit"
         disabled={submitting}
-        className="flex w-full items-center justify-center gap-2 rounded-md bg-primary py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+        className="flex h-auto w-full py-2.5 shadow-none hover:opacity-90"
       >
         {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
         {submitting ? 'Sending…' : 'Send reset link'}
-      </button>
+      </Button>
       <div className="text-center text-xs text-muted-foreground">
         Remembered it?{' '}
         <Link href="/login" className="font-medium text-foreground hover:underline">

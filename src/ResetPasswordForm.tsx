@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Button } from './components/ui/button';
+import { Input } from './components/ui/input';
+import { Label } from './components/ui/label';
 import { defaultEndpoints, type AuthEndpoints } from './types';
 
 export interface ResetPasswordFormProps {
@@ -74,8 +77,8 @@ export function ResetPasswordForm({ endpoints }: ResetPasswordFormProps = {}) {
         </div>
       )}
       <div>
-        <label className="mb-1 block text-xs font-medium text-muted-foreground">New password</label>
-        <input
+        <Label className="mb-1 block text-xs leading-4 text-muted-foreground">New password</Label>
+        <Input
           type="password"
           required
           minLength={10}
@@ -83,18 +86,18 @@ export function ResetPasswordForm({ endpoints }: ResetPasswordFormProps = {}) {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
           autoFocus
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+          className="h-auto border-border bg-background py-2 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-primary"
         />
         <p className="mt-1 text-[11px] text-muted-foreground">At least 10 characters, with a letter and a number.</p>
       </div>
-      <button
+      <Button
         type="submit"
         disabled={submitting}
-        className="flex w-full items-center justify-center gap-2 rounded-md bg-primary py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+        className="flex h-auto w-full py-2.5 shadow-none hover:opacity-90"
       >
         {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
         {submitting ? 'Updating…' : 'Update password'}
-      </button>
+      </Button>
     </form>
   );
 }
