@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { useTurnstileTheme } from './useTurnstileTheme';
 import { Button } from './components/ui/button';
@@ -19,6 +19,15 @@ import { defaultEndpoints, type AuthEndpoints, type SocialProviders } from './ty
 // The backend (@forjio/sdk/auth-server) verifies it when
 // TURNSTILE_SECRET_KEY is set; both sides bypass gracefully when unset.
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+/** Shape of the product-hosted MFA challenge the login POST returns when
+ *  the user has MFA enabled and the product opted in. */
+interface MfaChallenge {
+  mfaRequired?: boolean;
+  mfaChallengeToken?: string;
+  methods?: string[];
+  expiresAt?: string;
+}
 
 export interface AuthFormProps {
   mode: 'login' | 'signup';
@@ -80,6 +89,22 @@ export function AuthForm({
     ssoError ? `Sign-in failed: ${ssoDetail || ssoError}` : null,
   );
 
+  // Product-hosted MFA / OTP step. When the login POST returns
+  // `{ mfaRequired, mfaChallengeToken, methods, expiresAt }` (optionally
+  // wrapped in `{ data: … }`), the form swaps to the OTP step instead of
+  // redirecting. Backward-compatible: a normal login response never sets
+  // `mfaChallengeToken`, so the credentials step keeps today's behavior.
+  const [step, setStep] = useState<'credentials' | 'otp'>('credentials');
+  const [mfaChallengeToken, setMfaChallengeToken] = useState('');
+  const [mfaMethods, setMfaMethods] = useState<string[]>([]);
+  const [mfaExpiresAt, setMfaExpiresAt] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+
+  function redirectAfterAuth() {
+    router.push(returnTo);
+    router.refresh();
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -115,14 +140,85 @@ export function AuthForm({
         }
         throw new Error(payload?.error?.message ?? `Request failed (${res.status})`);
       }
-      router.push(returnTo);
-      router.refresh();
+      // Product-hosted MFA opt-in: the SDK responds 200 with an MFA
+      // challenge (possibly wrapped in `{ data: … }`) instead of a
+      // session. Swap to the in-product OTP step rather than redirect.
+      const payload = (await res.json().catch(() => null)) as
+        | { data?: MfaChallenge } & MfaChallenge
+        | null;
+      const challenge = payload?.data ?? payload;
+      if (challenge?.mfaRequired && challenge.mfaChallengeToken) {
+        setMfaChallengeToken(challenge.mfaChallengeToken);
+        setMfaMethods(Array.isArray(challenge.methods) ? challenge.methods : []);
+        setMfaExpiresAt(challenge.expiresAt ?? null);
+        setCode('');
+        setStep('otp');
+        return;
+      }
+      redirectAfterAuth();
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setSubmitting(false);
     }
   }
+
+  async function submitMfa(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const body: Record<string, unknown> = { mfaChallengeToken, code };
+      // MFA verify doesn't need a fresh captcha; only forward a token the
+      // credentials step already produced (never block on a missing one).
+      if (TURNSTILE_SITE_KEY && turnstileToken) body['cf-turnstile-response'] = turnstileToken;
+      const res = await fetch(ep.mfa, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as {
+          error?: { code?: string; message?: string };
+        } | null;
+        throw new Error(payload?.error?.message ?? `Request failed (${res.status})`);
+      }
+      redirectAfterAuth();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function backToCredentials() {
+    setStep('credentials');
+    setError(null);
+    setCode('');
+    setMfaChallengeToken('');
+    setMfaMethods([]);
+    setMfaExpiresAt(null);
+  }
+
+  // Live countdown to the challenge expiry, shown as a small hint on the
+  // OTP step. Recomputed every second while the OTP step is visible.
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  useEffect(() => {
+    if (step !== 'otp' || !mfaExpiresAt) {
+      setSecondsLeft(null);
+      return;
+    }
+    const target = new Date(mfaExpiresAt).getTime();
+    if (Number.isNaN(target)) {
+      setSecondsLeft(null);
+      return;
+    }
+    const tick = () => setSecondsLeft(Math.max(0, Math.round((target - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [step, mfaExpiresAt]);
 
   const otherMode = mode === 'login' ? 'signup' : 'login';
   const otherHref = `${otherMode === 'signup' ? signupHref : loginHref}?return_to=${encodeURIComponent(returnTo)}`;
@@ -152,7 +248,70 @@ export function AuthForm({
         </div>
       )}
 
-      {hasAnySocial && (
+      {step === 'otp' && (
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <ShieldCheck className="h-4 w-4 shrink-0" />
+              Two-factor authentication
+            </div>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Enter the 6-digit code from your authenticator app.
+            </p>
+          </div>
+
+          <form onSubmit={submitMfa} className="space-y-3">
+            <div>
+              <Label
+                htmlFor="mfa-code"
+                className="mb-1 block text-xs leading-4 text-muted-foreground"
+              >
+                Verification code
+              </Label>
+              <Input
+                id="mfa-code"
+                type="text"
+                required
+                autoFocus
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                aria-label="Six-digit verification code"
+                className="h-auto border-border bg-background py-2 text-center text-lg tracking-[0.4em] shadow-none focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              {secondsLeft !== null && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {secondsLeft > 0
+                    ? `Code expires in ${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`
+                    : 'Code expired — go back and sign in again.'}
+                </p>
+              )}
+            </div>
+            <Button
+              type="submit"
+              disabled={submitting || code.length !== 6}
+              className="flex h-auto w-full py-2.5 shadow-none hover:opacity-90"
+            >
+              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              {submitting ? 'Verifying…' : 'Verify'}
+            </Button>
+          </form>
+
+          <button
+            type="button"
+            onClick={backToCredentials}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to sign in
+          </button>
+        </div>
+      )}
+
+      {step === 'credentials' && hasAnySocial && (
         <>
           <div className="grid gap-2">
             {showGoogle && (
@@ -201,6 +360,7 @@ export function AuthForm({
         </>
       )}
 
+      {step === 'credentials' && (
       <form onSubmit={submit} className="space-y-3">
         <div>
           <Label className="mb-1 block text-xs leading-4 text-muted-foreground">Email</Label>
@@ -269,7 +429,9 @@ export function AuthForm({
             : 'Sign in'}
         </Button>
       </form>
+      )}
 
+      {step === 'credentials' && (
       <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground">
         {mode === 'login' && (
           <Link href={forgotPasswordHref} className="hover:text-foreground">
@@ -283,6 +445,7 @@ export function AuthForm({
           </Link>
         </span>
       </div>
+      )}
       <p className="pt-2 text-[11px] leading-relaxed text-muted-foreground/80">
         Identity is powered by{' '}
         <a href="https://huudis.com" className="underline hover:text-foreground">

@@ -6,6 +6,12 @@ export interface AuthEndpoints {
   signup: string;
   forgotPassword: string;
   resetPassword: string;
+  /** Product-hosted MFA verify path. The login POST returns
+   *  `{ mfaRequired, mfaChallengeToken, methods, expiresAt }` when the
+   *  user has MFA enabled and the product opted into in-product OTP;
+   *  the form then POSTs `{ mfaChallengeToken, code }` here. Shares the
+   *  same base-path convention as `login`. */
+  mfa: string;
   /** Social-provider start path. `?provider=<google|apple|facebook>` is
    *  appended by the form. Hitting it with no `provider=` lands on the
    *  Huudis hosted login (used for the MFA hand-off). */
@@ -17,6 +23,7 @@ export const defaultEndpoints: AuthEndpoints = {
   signup: '/api/v1/auth/signup',
   forgotPassword: '/api/v1/auth/password-reset/request',
   resetPassword: '/api/v1/auth/password-reset/complete',
+  mfa: '/api/v1/auth/mfa',
   socialStart: '/api/v1/auth/huudis/start',
 };
 
