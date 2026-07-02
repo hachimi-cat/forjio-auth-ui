@@ -168,7 +168,10 @@ export function AuthForm({
     setError(null);
     setSubmitting(true);
     try {
-      const body: Record<string, unknown> = { mfaChallengeToken, code };
+      // `...extraBody` carries the role discriminator (e.g. {role:'admin'})
+      // — it MUST ride the MFA leg too, or /auth/mfa mints the default
+      // (merchant) session and an admin login bounces back to the login page.
+      const body: Record<string, unknown> = { mfaChallengeToken, code, ...extraBody };
       // MFA verify doesn't need a fresh captcha; only forward a token the
       // credentials step already produced (never block on a missing one).
       if (TURNSTILE_SITE_KEY && turnstileToken) body['cf-turnstile-response'] = turnstileToken;
