@@ -9,7 +9,14 @@ import { useTurnstileTheme } from './useTurnstileTheme';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
-import { defaultEndpoints, type AuthEndpoints, type SocialProviders } from './types';
+import {
+  defaultEndpoints,
+  fillCopy,
+  resolveAuthCopy,
+  type AuthCopy,
+  type AuthEndpoints,
+  type SocialProviders,
+} from './types';
 
 // Cloudflare Turnstile is enabled family-wide by setting
 // NEXT_PUBLIC_TURNSTILE_SITE_KEY at build time. Next inlines NEXT_PUBLIC_*
@@ -57,6 +64,13 @@ export interface AuthFormProps {
    *  `{ role }`, which the Huudis OIDC start needs to mint the correct
    *  per-role session on callback. */
   socialParams?: Record<string, string>;
+  /**
+   * Override any of the form's visible strings. Anything omitted keeps the
+   * English default, so passing nothing is exactly the old behaviour — see
+   * `AuthCopy` in ./types. Products with a translated marketing site pass
+   * their own catalog through here so login is not the one English page left.
+   */
+  copy?: Partial<AuthCopy>;
 }
 
 export function AuthForm({
@@ -70,7 +84,9 @@ export function AuthForm({
   forgotPasswordHref = '/forgot-password',
   extraBody,
   socialParams,
+  copy: copyOverride,
 }: AuthFormProps) {
+  const copy = resolveAuthCopy(copyOverride);
   const router = useRouter();
   const params = useSearchParams();
   const returnTo = params?.get('return_to') || defaultReturnTo;
@@ -86,7 +102,7 @@ export function AuthForm({
   const [turnstileToken, setTurnstileToken] = useState('');
   const turnstileTheme = useTurnstileTheme();
   const [error, setError] = useState<string | null>(
-    ssoError ? `Sign-in failed: ${ssoDetail || ssoError}` : null,
+    ssoError ? fillCopy(copy.signInFailed, { detail: ssoDetail || ssoError }) : null,
   );
 
   // Product-hosted MFA / OTP step. When the login POST returns
@@ -247,7 +263,7 @@ export function AuthForm({
       {redirecting && (
         <div className="flex items-start gap-2 rounded-md border border-border bg-accent px-3 py-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 shrink-0 mt-0.5 animate-spin" />
-          <span>Redirecting you to complete two-factor sign-in…</span>
+          <span>{copy.redirectingTwoFactor}</span>
         </div>
       )}
 
@@ -256,10 +272,10 @@ export function AuthForm({
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
               <ShieldCheck className="h-4 w-4 shrink-0" />
-              Two-factor authentication
+              {copy.twoFactorTitle}
             </div>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Enter the 6-digit code from your authenticator app.
+              {copy.twoFactorHint}
             </p>
           </div>
 
@@ -269,7 +285,7 @@ export function AuthForm({
                 htmlFor="mfa-code"
                 className="mb-1 block text-xs leading-4 text-muted-foreground"
               >
-                Verification code
+                {copy.verificationCode}
               </Label>
               <Input
                 id="mfa-code"
@@ -282,14 +298,16 @@ export function AuthForm({
                 maxLength={6}
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                aria-label="Six-digit verification code"
+                aria-label={copy.verificationCodeAria}
                 className="h-auto border-border bg-background py-2 text-center text-lg tracking-[0.4em] shadow-none focus:outline-none focus:ring-1 focus:ring-primary"
               />
               {secondsLeft !== null && (
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   {secondsLeft > 0
-                    ? `Code expires in ${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`
-                    : 'Code expired — go back and sign in again.'}
+                    ? fillCopy(copy.codeExpiresIn, {
+                        time: `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`,
+                      })
+                    : copy.codeExpired}
                 </p>
               )}
             </div>
@@ -299,7 +317,7 @@ export function AuthForm({
               className="flex h-auto w-full py-2.5 shadow-none hover:opacity-90"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {submitting ? 'Verifying…' : 'Verify'}
+              {submitting ? copy.verifying : copy.verify}
             </Button>
           </form>
 
@@ -309,7 +327,7 @@ export function AuthForm({
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            Back to sign in
+            {copy.backToSignIn}
           </button>
         </div>
       )}
@@ -325,7 +343,7 @@ export function AuthForm({
               >
                 <a href={socialUrl('google')}>
                   <GoogleMark className="h-4 w-4" />
-                  Continue with Google
+                  {copy.continueWithGoogle}
                 </a>
               </Button>
             )}
@@ -337,7 +355,7 @@ export function AuthForm({
               >
                 <a href={socialUrl('apple')}>
                   <AppleMark className="h-4 w-4" />
-                  Continue with Apple
+                  {copy.continueWithApple}
                 </a>
               </Button>
             )}
@@ -349,7 +367,7 @@ export function AuthForm({
               >
                 <a href={socialUrl('facebook')}>
                   <FacebookMark className="h-4 w-4" />
-                  Continue with Facebook
+                  {copy.continueWithFacebook}
                 </a>
               </Button>
             )}
@@ -357,7 +375,7 @@ export function AuthForm({
 
           <div className="my-4 flex items-center gap-3 text-[11px] text-muted-foreground">
             <div className="flex-1 border-t border-border" />
-            OR
+            {copy.orDivider}
             <div className="flex-1 border-t border-border" />
           </div>
         </>
@@ -366,7 +384,7 @@ export function AuthForm({
       {step === 'credentials' && (
       <form onSubmit={submit} className="space-y-3">
         <div>
-          <Label className="mb-1 block text-xs leading-4 text-muted-foreground">Email</Label>
+          <Label className="mb-1 block text-xs leading-4 text-muted-foreground">{copy.email}</Label>
           <Input
             type="email"
             required
@@ -377,7 +395,7 @@ export function AuthForm({
           />
         </div>
         <div>
-          <Label className="mb-1 block text-xs leading-4 text-muted-foreground">Password</Label>
+          <Label className="mb-1 block text-xs leading-4 text-muted-foreground">{copy.password}</Label>
           <Input
             type="password"
             required
@@ -388,13 +406,13 @@ export function AuthForm({
             className="h-auto border-border bg-background py-2 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-primary"
           />
           {mode === 'signup' && (
-            <p className="mt-1 text-[11px] text-muted-foreground">At least 10 characters, with a letter and a number.</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">{copy.passwordHint}</p>
           )}
         </div>
         {mode === 'signup' && (
           <div>
             <Label className="mb-1 block text-xs leading-4 text-muted-foreground">
-              Your name <span className="text-muted-foreground/60">(optional)</span>
+              {copy.name} <span className="text-muted-foreground/60">{copy.optional}</span>
             </Label>
             <Input
               type="text"
@@ -410,7 +428,7 @@ export function AuthForm({
             <Turnstile
               siteKey={TURNSTILE_SITE_KEY}
               onSuccess={setTurnstileToken}
-              onError={() => setError('Security check failed.')}
+              onError={() => setError(copy.securityCheckFailed)}
               options={{ theme: turnstileTheme }}
             />
           </div>
@@ -422,14 +440,14 @@ export function AuthForm({
         >
           {(submitting || redirecting) && <Loader2 className="h-4 w-4 animate-spin" />}
           {redirecting
-            ? 'Redirecting…'
+            ? copy.redirecting
             : submitting
             ? mode === 'signup'
-              ? 'Creating…'
-              : 'Signing in…'
+              ? copy.creating
+              : copy.signingIn
             : mode === 'signup'
-            ? 'Create account'
-            : 'Sign in'}
+            ? copy.createAccount
+            : copy.signIn}
         </Button>
       </form>
       )}
@@ -438,23 +456,23 @@ export function AuthForm({
       <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground">
         {mode === 'login' && (
           <Link href={forgotPasswordHref} className="hover:text-foreground">
-            Forgot password?
+            {copy.forgotPassword}
           </Link>
         )}
         <span className={mode === 'login' ? '' : 'ml-auto'}>
-          {mode === 'login' ? `New to ${brand}?` : 'Already have an account?'}{' '}
+          {mode === 'login' ? fillCopy(copy.newToBrand, { brand }) : copy.alreadyHaveAccount}{' '}
           <Link href={otherHref} className="font-medium text-foreground hover:underline">
-            {mode === 'login' ? 'Sign up' : 'Sign in'}
+            {mode === 'login' ? copy.signUp : copy.signIn}
           </Link>
         </span>
       </div>
       )}
       <p className="pt-2 text-[11px] leading-relaxed text-muted-foreground/80">
-        Identity is powered by{' '}
+        {copy.identityPoweredBy}{' '}
         <a href="https://huudis.com" className="underline hover:text-foreground">
           Huudis
         </a>
-        . One account for every Forjio product.
+        . {copy.oneAccountNote}
       </p>
     </div>
   );

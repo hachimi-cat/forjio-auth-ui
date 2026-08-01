@@ -7,13 +7,24 @@ import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
-import { defaultEndpoints, type AuthEndpoints } from './types';
+import {
+  defaultEndpoints,
+  resolveAuthCopy,
+  type AuthCopy,
+  type AuthEndpoints,
+} from './types';
 
 export interface ResetPasswordFormProps {
   endpoints?: Partial<AuthEndpoints>;
+  /** Override visible strings; omitted keys keep today's English. */
+  copy?: Partial<AuthCopy>;
 }
 
-export function ResetPasswordForm({ endpoints }: ResetPasswordFormProps = {}) {
+export function ResetPasswordForm({
+  endpoints,
+  copy: copyOverride,
+}: ResetPasswordFormProps = {}) {
+  const copy = resolveAuthCopy(copyOverride);
   const ep: AuthEndpoints = { ...defaultEndpoints, ...endpoints };
   const router = useRouter();
   const params = useSearchParams();
@@ -52,7 +63,7 @@ export function ResetPasswordForm({ endpoints }: ResetPasswordFormProps = {}) {
         <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
           <span>
-            Missing or invalid reset link. <Link href="/forgot-password" className="font-medium underline">Request a new one</Link>.
+            {copy.missingResetLink} <Link href="/forgot-password" className="font-medium underline">{copy.requestNewOne}</Link>.
           </span>
         </div>
       </div>
@@ -63,7 +74,7 @@ export function ResetPasswordForm({ endpoints }: ResetPasswordFormProps = {}) {
     return (
       <div className="flex items-start gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-foreground">
         <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
-        <span>Password updated. Taking you to sign in…</span>
+        <span>{copy.passwordUpdated}</span>
       </div>
     );
   }
@@ -77,7 +88,7 @@ export function ResetPasswordForm({ endpoints }: ResetPasswordFormProps = {}) {
         </div>
       )}
       <div>
-        <Label className="mb-1 block text-xs leading-4 text-muted-foreground">New password</Label>
+        <Label className="mb-1 block text-xs leading-4 text-muted-foreground">{copy.newPassword}</Label>
         <Input
           type="password"
           required
@@ -88,7 +99,7 @@ export function ResetPasswordForm({ endpoints }: ResetPasswordFormProps = {}) {
           autoFocus
           className="h-auto border-border bg-background py-2 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-primary"
         />
-        <p className="mt-1 text-[11px] text-muted-foreground">At least 10 characters, with a letter and a number.</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">{copy.passwordHint}</p>
       </div>
       <Button
         type="submit"
@@ -96,7 +107,7 @@ export function ResetPasswordForm({ endpoints }: ResetPasswordFormProps = {}) {
         className="flex h-auto w-full py-2.5 shadow-none hover:opacity-90"
       >
         {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-        {submitting ? 'Updating…' : 'Update password'}
+        {submitting ? copy.updating : copy.updatePassword}
       </Button>
     </form>
   );

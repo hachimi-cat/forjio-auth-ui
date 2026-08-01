@@ -8,16 +8,27 @@ import { useTurnstileTheme } from './useTurnstileTheme';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
-import { defaultEndpoints, type AuthEndpoints } from './types';
+import {
+  defaultEndpoints,
+  resolveAuthCopy,
+  type AuthCopy,
+  type AuthEndpoints,
+} from './types';
 
 // Enabled family-wide via NEXT_PUBLIC_TURNSTILE_SITE_KEY (see AuthForm).
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 export interface ForgotPasswordFormProps {
   endpoints?: Partial<AuthEndpoints>;
+  /** Override visible strings; omitted keys keep today's English. */
+  copy?: Partial<AuthCopy>;
 }
 
-export function ForgotPasswordForm({ endpoints }: ForgotPasswordFormProps = {}) {
+export function ForgotPasswordForm({
+  endpoints,
+  copy: copyOverride,
+}: ForgotPasswordFormProps = {}) {
+  const copy = resolveAuthCopy(copyOverride);
   const ep: AuthEndpoints = { ...defaultEndpoints, ...endpoints };
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -76,7 +87,7 @@ export function ForgotPasswordForm({ endpoints }: ForgotPasswordFormProps = {}) 
         </div>
       )}
       <div>
-        <Label className="mb-1 block text-xs leading-4 text-muted-foreground">Email</Label>
+        <Label className="mb-1 block text-xs leading-4 text-muted-foreground">{copy.email}</Label>
         <Input
           type="email"
           required
@@ -92,7 +103,7 @@ export function ForgotPasswordForm({ endpoints }: ForgotPasswordFormProps = {}) 
           <Turnstile
             siteKey={TURNSTILE_SITE_KEY}
             onSuccess={setTurnstileToken}
-            onError={() => setError('Security check failed.')}
+            onError={() => setError(copy.securityCheckFailed)}
             options={{ theme: turnstileTheme }}
           />
         </div>
@@ -103,7 +114,7 @@ export function ForgotPasswordForm({ endpoints }: ForgotPasswordFormProps = {}) 
         className="flex h-auto w-full py-2.5 shadow-none hover:opacity-90"
       >
         {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-        {submitting ? 'Sending…' : 'Send reset link'}
+        {submitting ? copy.sending : copy.sendResetLink}
       </Button>
       <div className="text-center text-xs text-muted-foreground">
         Remembered it?{' '}
