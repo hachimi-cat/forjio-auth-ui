@@ -133,10 +133,11 @@ export function AuthForm({
     const role = typeof extraBody?.role === 'string' ? extraBody.role : '';
     const url = role ? `${ep.me}${ep.me.includes('?') ? '&' : '?'}role=${encodeURIComponent(role)}` : ep.me;
     fetch(url, { credentials: 'include', headers: { accept: 'application/json' }, signal: ctrl.signal })
-      .then(async (res) => {
-        const body = res.ok ? await res.json().catch(() => null) : null;
-        const user = body?.data?.user ?? body?.user;
-        if (!cancelled && user) {
+      .then((res) => {
+        // Any 2xx means a live session: the kit's /me answers 200 with the
+        // user, a product's own check (catent.io's /auth/check) a bare 200;
+        // no session is 401, a closed product 503.
+        if (!cancelled && res.ok) {
           const safe = /^\/(?!\/)/.test(returnTo) ? returnTo : defaultReturnTo;
           router.replace(safe);
           return;
