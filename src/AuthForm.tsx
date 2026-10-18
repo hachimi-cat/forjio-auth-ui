@@ -49,6 +49,9 @@ export interface AuthFormProps {
   /** Default redirect target after a successful auth. Default
    *  `/dashboard`. Search-param `?return_to=` overrides at runtime. */
   defaultReturnTo?: string;
+  /** Someone already signed in who opens the login or signup page goes
+   *  straight to `return_to` (checked against `endpoints.me`). Default on. */
+  redirectIfSignedIn?: boolean;
   /** Mode-switch link targets. Default `/login` / `/signup`. Override
    *  for products with non-default auth routes (e.g. role-scoped
    *  `/creators/login` + `/creators/onboarding`). `?return_to=` is
@@ -79,6 +82,7 @@ export function AuthForm({
   endpoints,
   providers,
   defaultReturnTo = '/dashboard',
+  redirectIfSignedIn = true,
   loginHref = '/login',
   signupHref = '/signup',
   forgotPasswordHref = '/forgot-password',
@@ -115,6 +119,35 @@ export function AuthForm({
   const [mfaMethods, setMfaMethods] = useState<string[]>([]);
   const [mfaExpiresAt, setMfaExpiresAt] = useState<string | null>(null);
   const [code, setCode] = useState('');
+
+  // Already signed in? Then this page has nothing to ask: go inside. Only a
+  // same-site path is followed without a click (an absolute or protocol-
+  // relative return_to falls back to the default), and a slow or failed check
+  // shows the form rather than hanging on a blank card.
+  const [checkingSession, setCheckingSession] = useState(redirectIfSignedIn);
+  useEffect(() => {
+    if (!redirectIfSignedIn) return;
+    let cancelled = false;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3000);
+    const role = typeof extraBody?.role === 'string' ? extraBody.role : '';
+    const url = role ? `${ep.me}${ep.me.includes('?') ? '&' : '?'}role=${encodeURIComponent(role)}` : ep.me;
+    fetch(url, { credentials: 'include', headers: { accept: 'application/json' }, signal: ctrl.signal })
+      .then(async (res) => {
+        const body = res.ok ? await res.json().catch(() => null) : null;
+        const user = body?.data?.user ?? body?.user;
+        if (!cancelled && user) {
+          const safe = /^\/(?!\/)/.test(returnTo) ? returnTo : defaultReturnTo;
+          router.replace(safe);
+          return;
+        }
+        if (!cancelled) setCheckingSession(false);
+      })
+      .catch(() => { if (!cancelled) setCheckingSession(false); })
+      .finally(() => clearTimeout(timer));
+    return () => { cancelled = true; ctrl.abort(); clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function redirectAfterAuth() {
     router.push(returnTo);
@@ -250,6 +283,16 @@ export function AuthForm({
   const showApple = providers?.apple !== false;
   const showFacebook = providers?.facebook !== false;
   const hasAnySocial = showGoogle || showApple || showFacebook;
+
+  // While the session check runs, a quiet spinner instead of a form that may
+  // vanish a moment later.
+  if (checkingSession) {
+    return (
+      <div className="flex justify-center py-10 text-muted-foreground" aria-busy="true">
+        <Loader2 className="h-5 w-5 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

@@ -16,6 +16,11 @@ export interface AuthEndpoints {
    *  appended by the form. Hitting it with no `provider=` lands on the
    *  Huudis hosted login (used for the MFA hand-off). */
   socialStart: string;
+  /** The session check (`GET`). 200 with a user = already signed in, so the
+   *  login and signup forms send the visitor straight to `return_to` instead
+   *  of asking again. The role (from `extraBody.role`) is appended as
+   *  `?role=`, which `@forjio/sdk/auth-server`'s /me reads. */
+  me: string;
 }
 
 export const defaultEndpoints: AuthEndpoints = {
@@ -25,6 +30,7 @@ export const defaultEndpoints: AuthEndpoints = {
   resetPassword: '/api/v1/auth/password-reset/complete',
   mfa: '/api/v1/auth/mfa',
   socialStart: '/api/v1/auth/huudis/start',
+  me: '/api/v1/auth/me',
 };
 
 /**
