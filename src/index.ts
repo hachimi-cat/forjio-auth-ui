@@ -7,3 +7,4 @@ export type { ResetPasswordFormProps } from './ResetPasswordForm';
 export type { AuthCopy, AuthEndpoints, SocialProviders } from './types';
 export { defaultAuthCopy, defaultEndpoints, resolveAuthCopy } from './types';
 export { fetchSocialProviders } from './providers';
+export { safeReturnTo } from './lib/safe-return-to';

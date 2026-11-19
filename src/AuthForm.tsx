@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Loader2, AlertCircle, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { useTurnstileTheme } from './useTurnstileTheme';
+import { safeReturnTo } from './lib/safe-return-to';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
@@ -121,9 +122,9 @@ export function AuthForm({
   const [code, setCode] = useState('');
 
   // Already signed in? Then this page has nothing to ask: go inside. Only a
-  // same-site path is followed without a click (an absolute or protocol-
-  // relative return_to falls back to the default), and a slow or failed check
-  // shows the form rather than hanging on a blank card.
+  // same-site return_to is followed (safeReturnTo; anything else falls back
+  // to the default), and a slow or failed check shows the form rather than
+  // hanging on a blank card.
   const [checkingSession, setCheckingSession] = useState(redirectIfSignedIn);
   useEffect(() => {
     if (!redirectIfSignedIn) return;
@@ -138,8 +139,7 @@ export function AuthForm({
         // user, a product's own check (catent.io's /auth/check) a bare 200;
         // no session is 401, a closed product 503.
         if (!cancelled && res.ok) {
-          const safe = /^\/(?!\/)/.test(returnTo) ? returnTo : defaultReturnTo;
-          router.replace(safe);
+          router.replace(safeReturnTo(returnTo, defaultReturnTo));
           return;
         }
         if (!cancelled) setCheckingSession(false);
@@ -151,7 +151,8 @@ export function AuthForm({
   }, []);
 
   function redirectAfterAuth() {
-    router.push(returnTo);
+    // Never follow return_to off this site (the open redirect fixed in 0.10.1).
+    router.push(safeReturnTo(returnTo, defaultReturnTo));
     router.refresh();
   }
 
@@ -184,7 +185,7 @@ export function AuthForm({
         // gated on the wrong portal.
         if (payload?.error?.code === 'MFA_REQUIRED') {
           setRedirecting(true);
-          const qs = new URLSearchParams({ return_to: returnTo, ...socialParams });
+          const qs = new URLSearchParams({ return_to: safeReturnTo(returnTo, defaultReturnTo), ...socialParams });
           window.location.href = `${ep.socialStart}?${qs.toString()}`;
           return;
         }

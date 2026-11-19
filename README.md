@@ -68,7 +68,7 @@ export default function ResetPasswordPage() {
 | `brand`           | required                         | Brand name shown in copy (e.g. `'Kalium'`)           |
 | `endpoints`       | family defaults                  | Override paths if backend mounts differ              |
 | `providers`       | `null` (fail-open shows all)     | `{ google?, apple?, facebook? }` bools — host fetches |
-| `defaultReturnTo` | `/dashboard`                     | Redirect after success; `?return_to=` overrides      |
+| `defaultReturnTo` | `/dashboard`                     | Redirect after success; `?return_to=` overrides, but only when it stays on this site (`safeReturnTo`, also exported) |
 
 ### `ForgotPasswordForm` / `ResetPasswordForm`
 
